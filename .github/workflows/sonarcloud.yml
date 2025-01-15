@@ -1,0 +1,70 @@
+name: SonarQube Analysis (C#)
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  sonarqube:
+    name: Analyze Orchard Core with SonarQube
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Install SonarScanner for .NET
+        run: dotnet tool install --global dotnet-sonarscanner
+
+      - name: Install Coverlet.Console
+        run: dotnet tool install --global coverlet.console
+
+      - name: Restore dependencies
+        run: dotnet restore ./OrchardCore.sln
+
+      - name: Build solution
+        run: dotnet build ./OrchardCore.sln --configuration Debug --framework net8.0
+
+      - name: Run tests with coverage
+        run: |
+          coverlet ./test/OrchardCore.Tests/bin/Debug/net8.0/OrchardCore.Tests.dll \
+            --target "dotnet" \
+            --targetargs "test ./test/OrchardCore.Tests/OrchardCore.Tests.csproj --no-build --framework net8.0 --logger trx --results-directory ./TestResults/" \
+            --output ./TestResults/Coverage/ \
+            --format opencover
+
+      - name: Upload test results (optional, for visibility in GitHub Actions)
+        uses: actions/upload-artifact@v3
+        with:
+          name: TestResults
+          path: ./TestResults/
+
+      - name: Run SonarQube analysis
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          dotnet sonarscanner begin \
+            /k:"${{ github.event.repository.name }}" \
+            /n:"${{ github.event.repository.name }}" \
+            /v:"${{ github.sha }}" \
+            /d:sonar.cs.opencover.reportsPaths="./TestResults/Coverage/coverage.opencover.xml" \
+            /d:sonar.inclusions="**/*.cs" \
+            /d:sonar.exclusions="**/bin/**,**/obj/**" \
+            /d:sonar.scanner.skipJreProvisioning=true \
+            /d:sonar.verbose=true \
+            /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" \
+            /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
+          dotnet build ./OrchardCore.sln --configuration Debug --framework net8.0
+          dotnet sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
