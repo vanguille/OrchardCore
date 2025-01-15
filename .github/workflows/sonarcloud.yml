@@ -36,7 +36,7 @@ jobs:
         run: dotnet restore ./OrchardCore.sln
 
       - name: Build solution
-        run: dotnet build ./OrchardCore.sln --configuration Debug
+        run: dotnet build ./OrchardCore.sln --configuration Debug --no-restore /p:DebugType=full
 
       - name: Run tests with coverage
         run: |
@@ -45,6 +45,7 @@ jobs:
             --targetargs "test ./test/OrchardCore.Tests/OrchardCore.Tests.csproj --no-build --logger trx --results-directory ./TestResults/" \
             --output ./TestResults/Coverage/ \
             --format opencover \
+            --include "[OrchardCore.*]*" \
             --exclude "[NetTopologySuite]*"
 
       - name: Upload test results (optional, for visibility in GitHub Actions)
