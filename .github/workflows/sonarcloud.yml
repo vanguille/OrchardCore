@@ -22,7 +22,9 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: |
+            9.0.x
+            8.0.x
 
       - name: Install SonarScanner for .NET
         run: dotnet tool install --global dotnet-sonarscanner
@@ -34,15 +36,16 @@ jobs:
         run: dotnet restore ./OrchardCore.sln
 
       - name: Build solution
-        run: dotnet build ./OrchardCore.sln --configuration Debug --framework net8.0
+        run: dotnet build ./OrchardCore.sln --configuration Debug
 
       - name: Run tests with coverage
         run: |
           coverlet ./test/OrchardCore.Tests/bin/Debug/net8.0/OrchardCore.Tests.dll \
             --target "dotnet" \
-            --targetargs "test ./test/OrchardCore.Tests/OrchardCore.Tests.csproj --no-build --framework net8.0 --logger trx --results-directory ./TestResults/" \
+            --targetargs "test ./test/OrchardCore.Tests/OrchardCore.Tests.csproj --no-build --logger trx --results-directory ./TestResults/" \
             --output ./TestResults/Coverage/ \
-            --format opencover
+            --format opencover \
+            --exclude "[NetTopologySuite]*"
 
       - name: Upload test results (optional, for visibility in GitHub Actions)
         uses: actions/upload-artifact@v3
@@ -66,5 +69,5 @@ jobs:
             /d:sonar.verbose=true \
             /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" \
             /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
-          dotnet build ./OrchardCore.sln --configuration Debug --framework net8.0
+          dotnet build ./OrchardCore.sln --configuration Debug
           dotnet sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
